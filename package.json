@@ -1,0 +1,47 @@
+{
+  "name": "qa-check-tool",
+  "version": "1.0.0",
+  "description": "Web制作の納品前品質チェックツール — Playwright + Lighthouse",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "qcheck": "src/index.js"
+  },
+  "scripts": {
+    "check": "node src/index.js",
+    "test": "echo \"Error: no test specified yet\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ichimasa/qa-check-tool.git"
+  },
+  "keywords": [
+    "qa",
+    "quality-check",
+    "quality-assurance",
+    "web-testing",
+    "playwright",
+    "lighthouse",
+    "seo",
+    "accessibility",
+    "performance",
+    "responsive",
+    "cli-tool",
+    "automation",
+    "web"
+  ],
+  "author": "ichimasa",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ichimasa/qa-check-tool/issues"
+  },
+  "homepage": "https://github.com/ichimasa/qa-check-tool#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "chrome-launcher": "^1.2.1",
+    "lighthouse": "^12.8.2",
+    "playwright": "^1.58.2"
+  }
+}
