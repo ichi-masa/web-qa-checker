@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ichimasa/qa-check-tool.git"
+    "url": "git+https://github.com/ichi-masa/web-qa-checker.git"
   },
   "keywords": [
     "qa",
@@ -33,9 +33,9 @@
   "author": "ichimasa",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ichimasa/qa-check-tool/issues"
+    "url": "https://github.com/ichi-masa/web-qa-checker/issues"
   },
-  "homepage": "https://github.com/ichimasa/qa-check-tool#readme",
+  "homepage": "https://github.com/ichi-masa/web-qa-checker#readme",
   "engines": {
     "node": ">=18.0.0"
   },

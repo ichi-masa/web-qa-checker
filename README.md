@@ -25,8 +25,8 @@ Web制作の納品前品質チェックを自動化するCLIツール。Playwrig
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/[your-username]/qa-check-tool.git
-cd qa-check-tool
+git clone https://github.com/ichi-masa/web-qa-checker.git
+cd web-qa-checker
 
 # 依存関係をインストール
 npm install
