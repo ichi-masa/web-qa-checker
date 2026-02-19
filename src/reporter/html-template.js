@@ -36,9 +36,15 @@ export function generateHtml(report) {
 
   ${pages.length > 1 ? `
   <nav class="page-tabs">
+    <div class="page-tabs-label">ページ一覧</div>
     <div class="page-tabs-list">
-      ${pages.map((p, i) => `<button class="page-tab${i === 0 ? ' active' : ''}" data-tab="${i}">${decodeURIComponent(p.path)} ${renderMiniStatus(p)}</button>`).join('')}
-      <button class="page-tab page-tab-all" data-tab="all">すべて表示</button>
+      ${pages.map((p, i) => `<button class="page-tab${i === 0 ? ' active' : ''}" data-tab="${i}">
+        <span class="page-tab-path">${decodeURIComponent(p.path)}</span>
+        <span class="page-tab-badges">${renderMiniStatus(p)}</span>
+      </button>`).join('')}
+      <button class="page-tab page-tab-all" data-tab="all">
+        <span class="page-tab-path">すべて表示</span>
+      </button>
     </div>
   </nav>` : ''}
 
@@ -496,40 +502,62 @@ function getStyles() {
     /* Page Tabs */
     .page-tabs {
       max-width: 1200px;
-      margin: 0 auto 16px;
+      margin: 0 auto 20px;
       padding: 0 24px;
+    }
+    .page-tabs-label {
+      font-size: 0.7em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--c-text-secondary);
+      margin-bottom: 10px;
     }
     .page-tabs-list {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
-      border-bottom: 2px solid var(--c-border);
-      padding-bottom: 0;
+      gap: 8px;
     }
     .page-tab {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 16px;
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--c-card);
+      border: 1px solid var(--c-border);
+      border-radius: 8px;
       color: var(--c-text-secondary);
-      font-size: 0.85em;
+      font-size: 0.82em;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.15s;
       font-family: inherit;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
-    .page-tab:hover { color: var(--c-accent); }
-    .page-tab.active {
+    .page-tab:hover {
       color: var(--c-accent);
-      border-bottom-color: var(--c-accent);
-      font-weight: 600;
+      border-color: var(--c-accent);
+      background: #f5f3ff;
     }
+    .page-tab.active {
+      color: #fff;
+      background: var(--c-accent);
+      border-color: var(--c-accent);
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+    }
+    .page-tab.active .mini-error,
+    .page-tab.active .mini-warning,
+    .page-tab.active .mini-ok {
+      background: rgba(255,255,255,0.25);
+      color: #fff;
+    }
+    .page-tab-path { white-space: nowrap; }
+    .page-tab-badges { display: inline-flex; gap: 4px; }
     .page-tab-all { margin-left: auto; }
-    .mini-ok { font-size: 0.7em; background: #ecfdf5; color: var(--c-green); padding: 1px 6px; border-radius: 4px; font-weight: 600; }
-    .mini-error { font-size: 0.7em; background: #fef2f2; color: var(--c-red); padding: 1px 6px; border-radius: 4px; font-weight: 600; }
-    .mini-warning { font-size: 0.7em; background: #fffbeb; color: var(--c-orange); padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+    .mini-ok { font-size: 0.7em; background: #ecfdf5; color: var(--c-green); padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+    .mini-error { font-size: 0.7em; background: #fef2f2; color: var(--c-red); padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+    .mini-warning { font-size: 0.7em; background: #fffbeb; color: var(--c-orange); padding: 2px 8px; border-radius: 10px; font-weight: 600; }
 
     /* Page Sections */
     .page-section {
