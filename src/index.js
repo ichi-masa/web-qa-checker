@@ -13,6 +13,13 @@ import { checkLinks } from './checks/links.js';
 import { checkConsoleErrors } from './checks/console-errors.js';
 import { checkResponsive } from './checks/responsive.js';
 import { checkLighthouse } from './checks/lighthouse.js';
+import { checkW3c } from './checks/w3c.js';
+import { checkHtmlComments } from './checks/html-comments.js';
+import { checkPagination } from './checks/pagination.js';
+import { checkSsl } from './checks/ssl.js';
+import { checkSiteFiles } from './checks/site-files.js';
+import { checkNotFound } from './checks/not-found.js';
+import { checkWpSecurity } from './checks/wp-security.js';
 import { generateReport } from './reporter/generate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -128,7 +135,7 @@ async function main() {
       }
     }
 
-    // ページ一覧を表示して追加の除外確認
+    // ページ一覧を表示して除外確認
     if (pageUrls.length > 1) {
       console.log(`\n  チェック対象 ${pageUrls.length} ページ:\n`);
       pageUrls.forEach((u, i) => {
@@ -137,28 +144,45 @@ async function main() {
       });
 
       const rl = createInterface({ input: process.stdin, output: process.stdout });
-      const excludeInput = await rl.question('\n  追加で除外？（パターン: /blog/ / 番号: 3,5-8）空欄でこのまま実行: ');
+      const excludeInput = await rl.question('\n  除外？（パターン: /blog/ / 番号: 3,5-8）空欄でスキップ: ');
       rl.close();
 
       if (excludeInput.trim()) {
         const input = excludeInput.trim();
-        // 番号指定かパターン指定かを判定
         const excludeIndices = parseNumberRanges(input, pageUrls.length);
 
-        let excluded = [];
         if (excludeIndices.length > 0) {
-          excluded = excludeIndices.map(i => pageUrls[i]);
           pageUrls = pageUrls.filter((_, i) => !excludeIndices.includes(i));
         } else {
           const patterns = input.split(/[,\s]+/);
           pageUrls = pageUrls.filter(u => {
             const p = decodeURIComponent(new URL(u).pathname);
-            const shouldExclude = patterns.some(pat => p.includes(pat));
-            if (shouldExclude) excluded.push(u);
-            return !shouldExclude;
+            return !patterns.some(pat => p.includes(pat));
           });
         }
-        console.log(`  → ${excluded.length} ページ除外、${pageUrls.length} ページを対象`);
+        console.log(`  → 除外後: ${pageUrls.length} ページを対象`);
+      }
+    }
+
+    // URL追加
+    {
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      const addInput = await rl.question('\n  追加URL（パス: /lp/,/hidden-page/）空欄でスキップ: ');
+      rl.close();
+
+      if (addInput.trim()) {
+        const paths = addInput.trim().split(/[,\s]+/).filter(Boolean);
+        let added = 0;
+        for (const p of paths) {
+          const fullUrl = baseUrl + (p.startsWith('/') ? p : '/' + p);
+          if (!pageUrls.includes(fullUrl)) {
+            pageUrls.push(fullUrl);
+            added++;
+          }
+        }
+        if (added > 0) {
+          console.log(`  → ${added} ページ追加、合計 ${pageUrls.length} ページを対象`);
+        }
       }
     }
   }
@@ -214,6 +238,18 @@ async function main() {
     const linkResult = await checkLinks(page, baseUrl);
     pageResult.checks.push(linkResult);
 
+    console.log('    - W3Cバリデーション...');
+    const w3cResult = await checkW3c(page, pageUrl);
+    pageResult.checks.push(w3cResult);
+
+    console.log('    - HTMLコメント...');
+    const commentsResult = await checkHtmlComments(page);
+    pageResult.checks.push(commentsResult);
+
+    console.log('    - ページネーション...');
+    const paginationResult = await checkPagination(page);
+    pageResult.checks.push(paginationResult);
+
     // レスポンシブスクリーンショット
     if (!flags.skipScreenshots) {
       console.log('    - レスポンシブチェック（10幅）...');
@@ -226,6 +262,33 @@ async function main() {
 
     report.pages.push(pageResult);
   }
+
+  // サイト全体チェック
+  console.log('\n  [サイト全体] セキュリティ・設定チェック...');
+  const { page: sitePage, context: siteContext } = await createPage();
+  const siteChecks = [];
+
+  console.log('    - SSL/HTTPS...');
+  siteChecks.push(await checkSsl(sitePage, baseUrl));
+
+  console.log('    - sitemap/robots.txt...');
+  siteChecks.push(await checkSiteFiles(sitePage, baseUrl));
+
+  console.log('    - 404ページ...');
+  siteChecks.push(await checkNotFound(sitePage, baseUrl));
+
+  console.log('    - WPセキュリティ...');
+  siteChecks.push(await checkWpSecurity(sitePage, baseUrl));
+
+  await siteContext.close();
+
+  report.pages.push({
+    url: baseUrl,
+    path: 'サイト全体',
+    title: 'サイト全体チェック',
+    checks: siteChecks,
+    screenshots: [],
+  });
 
   await closeBrowser();
 

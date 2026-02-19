@@ -11,12 +11,12 @@ Web制作の納品前品質チェックは全68項目あり、手動で1〜2時�
 - 自分（ichimasa）が制作した WordPress サイトの納品前チェック
 - 将来的にチームや他のクリエイターにも展開可能
 
-### 現状（2026-02-09 時点）
-- 品質チェックリストの分析完了 → `品質チェック自動化_分析.md`
-- Playwrightでのレスポンシブスクショ撮影: **動作確認済み**
-- PlaywrightでのSEO/メタ/画像/リンク/見出しチェック: **動作確認済み**
-- Lighthouse CLI: **動作確認済み**
-- Claude Code `/check` スキル: **プロトタイプ作成済み**
+### 現状（2026-02-19 時点）
+- Phase 1（MVP）: **実装完了** — 全7チェック + HTMLレポート + 対話モード
+- Phase 2: **実装完了** — W3Cバリデーション、セキュリティ、SSL、サイト設定、404、コメント、ページネーション
+- Phase 3: 未着手
+- 対話モード改善: ページ除外 + URL追加機能
+- レポートデザイン改善: カテゴリ色ボーダー + 説明文サブテキスト
 
 ---
 
@@ -38,15 +38,15 @@ Web制作の納品前品質チェックは全68項目あり、手動で1〜2時�
   - [ ] Lighthouseスコア（Performance, Accessibility, Best Practices, SEO）
 - [ ] HTMLレポートを生成（ブラウザで開ける）
 
-#### Phase 2（MVP後）
-- [ ] WPセキュリティチェック（?author=1, wp-login露出, ログインURL）
-- [ ] W3C HTML/CSSバリデーション
-- [ ] 不要HTMLコメント検出
-- [ ] 構造化データチェック
-- [ ] 404ページ確認
-- [ ] sitemap.xml / robots.txt 確認
-- [ ] SSL確認
-- [ ] ページネーション動作確認
+#### Phase 2（MVP後）— 実装済み
+- [x] WPセキュリティチェック（?author=1, wp-login露出, xmlrpc露出）→ `wp-security.js`
+- [x] W3C HTML/CSSバリデーション（Nu HTML Checker + CSS Validator API）→ `w3c.js`
+- [x] 不要HTMLコメント検出 → `html-comments.js`
+- [x] 構造化データチェック（JSON-LD、SEO/メタ情報チェック内で実装済み）
+- [x] 404ページ確認 → `not-found.js`
+- [x] sitemap.xml / robots.txt 確認 → `site-files.js`
+- [x] SSL確認（HTTPS、リダイレクト、Mixed Content）→ `ssl.js`
+- [x] ページネーション動作確認 → `pagination.js`
 
 #### Phase 3（将来）
 - [ ] Figma照合（Figma REST API経由、AI不要）
@@ -61,7 +61,7 @@ Web制作の納品前品質チェックは全68項目あり、手動で1〜2時�
 - [ ] 前回レポートとの差分比較
 
 ### 非機能要件
-- Node.js + Playwright + Lighthouse で構成（追加の外部サービスなし）
+- Node.js + Playwright + Lighthouse で構成（W3Cバリデーションのみ外部API使用）
 - ローカル環境（localhost）でも本番URLでも動作する
 - 1ページあたりのチェック時間: 30秒以内目安
 - レポートはオフラインでも閲覧可能（HTMLファイル）
@@ -76,24 +76,30 @@ Web制作の納品前品質チェックは全68項目あり、手動で1〜2時�
 qa-check-tool/
 ├── package.json
 ├── src/
-│   ├── index.js              # エントリポイント（CLI）
-│   ├── crawler.js             # ページURL収集（sitemap or リンク辿り）
+│   ├── index.js              # エントリポイント（CLI + 対話モード）
+│   ├── crawler.js            # ページURL収集（sitemap or リンク辿り）
 │   ├── checks/
-│   │   ├── seo.js             # SEO/メタ情報チェック
-│   │   ├── images.js          # 画像チェック
-│   │   ├── headings.js        # 見出し階層チェック
-│   │   ├── links.js           # リンクチェック
-│   │   ├── console-errors.js  # コンソール/ネットワークエラー
-│   │   ├── responsive.js      # レスポンシブスクショ + 横スクロール
-│   │   └── lighthouse.js      # Lighthouse統合
+│   │   ├── seo.js            # SEO/メタ情報
+│   │   ├── images.js         # 画像（alt, width/height）
+│   │   ├── headings.js       # 見出し階層
+│   │   ├── links.js          # リンク（ダミー, 壊れ）
+│   │   ├── console-errors.js # コンソール/ネットワークエラー
+│   │   ├── w3c.js            # W3C HTML/CSSバリデーション
+│   │   ├── html-comments.js  # HTMLコメント検出
+│   │   ├── pagination.js     # ページネーション
+│   │   ├── responsive.js     # レスポンシブスクショ + 横スクロール
+│   │   ├── lighthouse.js     # Lighthouse統合
+│   │   ├── ssl.js            # SSL/HTTPS + Mixed Content
+│   │   ├── site-files.js     # sitemap.xml / robots.txt
+│   │   ├── not-found.js      # 404ページ確認
+│   │   └── wp-security.js    # WPセキュリティ
 │   ├── reporter/
-│   │   ├── html-template.js   # HTMLレポートテンプレート
-│   │   └── generate.js        # レポート生成
+│   │   ├── html-template.js  # HTMLレポートテンプレート
+│   │   ├── markdown-template.js # Markdownレポートテンプレート
+│   │   └── generate.js       # レポート生成
 │   └── utils/
-│       └── browser.js         # Playwright ブラウザ管理
-├── output/                    # レポート出力先
-│   ├── screenshots/
-│   └── reports/
+│       └── browser.js        # Playwright ブラウザ管理
+├── output/                   # レポート出力先
 └── README.md
 ```
 

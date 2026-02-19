@@ -1,33 +1,24 @@
-# qa-check-tool 🔍
+# qa-check-tool
 
 Web制作の納品前品質チェックを自動化するCLIツール。Playwright + Lighthouse で包括的なチェックを実行し、HTMLとMarkdownの詳細レポートを生成します。
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org)
+## 特徴
 
-## ✨ 特徴
+- **完全自動化**: URLを指定するだけで全ページを自動収集・チェック
+- **包括的なチェック**: SEO、セキュリティ、W3Cバリデーション、パフォーマンスなど14項目
+- **デュアルレポート**: HTMLとMarkdown両形式でレポート生成
+- **対話モード**: 引数なしで起動すると対話形式で設定可能
+- **Basic認証対応**: 開発環境の認証付きサイトもチェック可能
+- **レスポンシブ検証**: 10種類のブレークポイントで自動スクリーンショット
 
-- 🚀 **完全自動化**: URLを指定するだけで全ページを自動収集・チェック
-- 📊 **包括的なチェック**: SEO、アクセシビリティ、パフォーマンス、レスポンシブ対応など
-- 📝 **デュアルレポート**: HTMLとMarkdown両形式でレポート生成
-- 🎯 **対話モード**: 引数なしで起動すると対話形式で設定可能
-- 🔐 **Basic認証対応**: 開発環境の認証付きサイトもチェック可能
-- 📸 **レスポンシブ検証**: 10種類のブレークポイントで自動スクリーンショット
-- ⚡ **高速モード**: Lighthouseやスクリーンショットをスキップして高速実行
-
-## 📦 インストール
+## インストール
 
 ### 前提条件
 - Node.js 18.0.0以上
-- npm または yarn
 
-### セットアップ手順
+### セットアップ
 
 ```bash
-# リポジトリをクローン
-git clone https://github.com/ichi-masa/web-qa-checker.git
-cd web-qa-checker
-
 # 依存関係をインストール
 npm install
 
@@ -38,13 +29,11 @@ npx playwright install chromium
 npm link   # 「qcheck」コマンドが使えるようになります
 ```
 
-## 🚀 使い方
+## 使い方
 
 ### 対話モード（推奨）
 ```bash
-# 引数なしで起動すると対話モードに
 qcheck
-
 # または
 node src/index.js
 ```
@@ -54,6 +43,9 @@ node src/index.js
 2. プロジェクト名（レポートのフォルダ名）
 3. Basic認証情報（必要な場合）
 4. Lighthouseの実行有無
+5. 投稿記事の除外確認（WordPress sitemap検出時）
+6. ページの除外（番号 or パターン指定）
+7. URLの追加（クロールで見つからなかったページを手動追加）
 
 ### コマンドライン引数モード
 
@@ -80,49 +72,35 @@ qcheck http://localhost:3000 --name=my-project
 qcheck http://localhost:3000 --output=./reports
 ```
 
-## 📋 チェック項目
+## チェック項目
 
-### SEO・メタ情報
-- ✅ タイトルタグの存在と長さ
-- ✅ メタディスクリプションの存在と長さ
-- ✅ canonical URLの設定
-- ✅ viewportメタタグ
-- ✅ OGP（Open Graph）タグ
-- ✅ favicon の存在
-- ✅ 構造化データ（JSON-LD）
+### ページごとのチェック（全ページに対して実行）
 
-### アクセシビリティ
-- ✅ 画像のalt属性
-- ✅ 画像のwidth/height属性
-- ✅ 見出しタグ（h1）の数と適切性
-- ✅ 見出し階層のスキップチェック
+| チェック | 内容 |
+|---|---|
+| SEO/メタ情報 | title, description, OGP, canonical, viewport, favicon, 構造化データ |
+| 画像チェック | alt属性, width/height属性 |
+| 見出し階層 | h1の数, h1-h6の階層スキップ検出 |
+| リンクチェック | href="#" ダミーリンク, 空リンク, 壊れた内部リンク |
+| コンソール/ネットワークエラー | JSコンソールエラー, 4xx/5xxレスポンス |
+| W3C バリデーション | HTML構文エラー/警告, 閉じタグ, CSS構文エラー（Nu HTML Checker + CSS Validator API） |
+| HTMLコメント | 不要な `<!-- -->` コメントの検出 |
+| ページネーション | ページ送りリンクの検出, rel="next/prev" 確認 |
+| レスポンシブチェック | 10幅でスクリーンショット撮影, 横スクロール検出 |
+| Lighthouse | Performance, Accessibility, Best Practices, SEO スコア + 診断詳細 |
 
-### リンク・ナビゲーション
-- ✅ ダミーリンク（href="#"）の検出
-- ✅ 空リンクの検出
-- ✅ 外部リンクのチェック
-- ✅ 内部リンクの整合性
+### サイト全体チェック（1回だけ実行）
 
-### エラー検出
-- ✅ JavaScriptコンソールエラー
-- ✅ ネットワークエラー（4xx/5xx）
-- ✅ Mixed Content警告
+| チェック | 内容 |
+|---|---|
+| SSL/HTTPS | HTTPS使用確認, HTTP→HTTPSリダイレクト, Mixed Content検出 |
+| sitemap / robots.txt | 存在確認, robots.txt内のSitemap参照, sitemap.xmlのURL数 |
+| 404ページ | 存在しないURLへのステータスコード確認, カスタム404ページの有無 |
+| WPセキュリティ | ?author=1 ユーザー列挙, wp-login.php 露出, xmlrpc.php 露出 |
 
-### レスポンシブ対応
-- ✅ 10種類のブレークポイントでスクリーンショット撮影
-- ✅ 横スクロールの検出
-- ✅ レイアウト崩れの視覚的確認
+## レスポンシブチェック
 
-### パフォーマンス（Lighthouse）
-- ✅ Performance スコア
-- ✅ Accessibility スコア
-- ✅ Best Practices スコア
-- ✅ SEO スコア
-- ✅ PWA 対応状況
-
-## 📱 レスポンシブチェック
-
-以下の10種類のブレークポイントで自動的にスクリーンショットを撮影：
+以下の10種類のブレークポイントで自動スクリーンショットを撮影：
 
 | デバイス | 幅 (px) | 説明 |
 |----------|---------|------|
@@ -137,15 +115,13 @@ qcheck http://localhost:3000 --output=./reports
 | Full HD | 1920 | フルHD境界前 |
 | Full HD+ | 1921 | フルHD境界後 |
 
-## 📂 出力ファイル
-
-レポートは指定したディレクトリに以下の構造で出力されます：
+## 出力ファイル
 
 ```
 output/
 ├── project-name/
-│   ├── 2024-02-09_qa-report.html    # HTMLレポート（ブラウザ表示用）
-│   ├── 2024-02-09_qa-report.md      # Markdownレポート（ドキュメント用）
+│   ├── YYYY-MM-DD_qa-report.html    # HTMLレポート（ブラウザで自動表示）
+│   ├── YYYY-MM-DD_qa-report.md      # Markdownレポート
 │   └── screenshots/
 │       ├── top/
 │       │   ├── 320px.png
@@ -153,15 +129,9 @@ output/
 │       │   └── ...
 │       └── about/
 │           └── ...
-└── another-project/
-    └── ...
 ```
 
-### レポート形式
-- **HTML**: ブラウザで開いて視覚的に確認（自動的にブラウザが起動）
-- **Markdown**: GitHubやドキュメント管理ツールで閲覧・共有
-
-## ⚙️ オプション一覧
+## オプション一覧
 
 | オプション | 説明 | デフォルト |
 |-----------|------|-----------|
@@ -172,60 +142,63 @@ output/
 | `--skip-lighthouse` | Lighthouseチェックをスキップ | 実行する |
 | `--skip-screenshots` | レスポンシブスクリーンショットをスキップ | 撮影する |
 
-## 🤖 ページ自動収集
+## ページ自動収集
 
 ツールは以下の順序でページを自動収集します：
 
 1. **sitemap.xml** が存在する場合はそこから全URL取得
 2. 存在しない場合はトップページの全リンクを自動収集
-3. 収集後、対話的に除外したいページを選択可能
+3. 投稿記事（WordPress）は自動検出し、サンプル1件を残して除外提案
+4. 収集後、番号指定やパターン指定で除外可能
+5. クロールで見つからなかったページもパス指定で追加可能
 
-### 自動除外機能
-- ブログ記事などの大量ページは自動的に検出
-- サンプル1件を残して残りを除外するか選択可能
-- 追加の除外も番号指定やパターン指定で可能
+## ディレクトリ構造
 
-## 🛠 開発
-
-### ディレクトリ構造
 ```
 qa-check-tool/
 ├── src/
-│   ├── index.js            # エントリーポイント
-│   ├── crawler.js          # ページ収集ロジック
-│   ├── checks/             # 各種チェック機能
-│   │   ├── seo.js
-│   │   ├── images.js
-│   │   ├── headings.js
-│   │   ├── links.js
-│   │   ├── console-errors.js
-│   │   ├── responsive.js
-│   │   └── lighthouse.js
+│   ├── index.js              # エントリーポイント（CLI + 対話モード）
+│   ├── crawler.js            # ページ収集（sitemap / リンク辿り）
+│   ├── checks/
+│   │   ├── seo.js            # SEO/メタ情報
+│   │   ├── images.js         # 画像（alt, width/height）
+│   │   ├── headings.js       # 見出し階層
+│   │   ├── links.js          # リンク（ダミー, 壊れ）
+│   │   ├── console-errors.js # コンソール/ネットワークエラー
+│   │   ├── w3c.js            # W3C HTML/CSSバリデーション
+│   │   ├── html-comments.js  # HTMLコメント検出
+│   │   ├── pagination.js     # ページネーション
+│   │   ├── responsive.js     # レスポンシブスクショ + 横スクロール
+│   │   ├── lighthouse.js     # Lighthouse
+│   │   ├── ssl.js            # SSL/HTTPS + Mixed Content
+│   │   ├── site-files.js     # sitemap.xml / robots.txt
+│   │   ├── not-found.js      # 404ページ確認
+│   │   └── wp-security.js    # WPセキュリティ
 │   ├── utils/
-│   │   └── browser.js      # Playwright設定
+│   │   └── browser.js        # Playwright ブラウザ管理
 │   └── reporter/
-│       ├── generate.js     # レポート生成
-│       ├── html-template.js
-│       └── markdown-template.js
-├── output/                 # レポート出力先
+│       ├── generate.js       # レポート生成
+│       ├── html-template.js  # HTMLレポートテンプレート
+│       └── markdown-template.js # Markdownレポートテンプレート
+├── output/                   # レポート出力先
 ├── package.json
+├── PROJECT.md                # プロジェクトドキュメント
 └── README.md
 ```
 
-## 📝 ライセンス
+## 外部API
 
-MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照
+チェック実行時に以下の外部APIを使用します：
 
-## 🤝 コントリビューション
+| API | 用途 | 備考 |
+|---|---|---|
+| [Nu HTML Checker](https://validator.w3.org/nu/) | HTMLバリデーション | POSTでHTML送信、レート制限あり |
+| [W3C CSS Validator](https://jigsaw.w3.org/css-validator/) | CSSバリデーション | 同一オリジンCSS、50KB制限 |
 
-Issue や Pull Request は大歓迎です！
+## ライセンス
 
-## 👤 作者
+MIT License
+
+## 作者
 
 **ichimasa**
-
-## 🙏 謝辞
-
-- [Playwright](https://playwright.dev/) - ブラウザ自動化
-- [Lighthouse](https://github.com/GoogleChrome/lighthouse) - パフォーマンス計測
-- [Chrome Launcher](https://github.com/GoogleChrome/chrome-launcher) - Chrome制御

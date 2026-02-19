@@ -292,18 +292,42 @@ function renderLighthouseDiagnostics(check) {
   }
 
   return `
-    <div class="check-group">
-      <h3 class="check-group-title">Lighthouse 診断詳細</h3>
+    <div class="check-group" style="border-left: 3px solid #f97316">
+      <div class="check-group-header">
+        <h3 class="check-group-title">Lighthouse</h3>
+        <span class="check-group-desc">診断詳細</span>
+      </div>
       ${metricsHtml}
       ${oppsHtml}
       ${diagHtml}
     </div>`;
 }
 
+const CHECK_META = {
+  'コンソール/ネットワークエラー': { desc: 'JSエラー・リクエスト失敗', color: '#ef4444' },
+  'SEO/メタ情報':     { desc: 'title・description・OGP・canonical', color: '#3b82f6' },
+  '画像チェック':      { desc: 'alt属性・width/height指定', color: '#8b5cf6' },
+  '見出し階層':        { desc: 'h1〜h6の階層と順序', color: '#8b5cf6' },
+  'リンクチェック':     { desc: 'ダミーリンク・壊れたリンク', color: '#f59e0b' },
+  'W3C バリデーション': { desc: 'HTML/CSS構文・閉じタグ', color: '#10b981' },
+  'HTMLコメント':      { desc: '不要コメントの検出', color: '#6b7280' },
+  'ページネーション':   { desc: 'ページ送りリンク・rel属性', color: '#6b7280' },
+  'レスポンシブチェック': { desc: '横スクロール検出・10幅スクリーンショット', color: '#06b6d4' },
+  'Lighthouse':       { desc: 'Performance・Accessibility・Best Practices・SEO', color: '#f97316' },
+  'SSL/HTTPS':        { desc: 'HTTPS・リダイレクト・Mixed Content', color: '#10b981' },
+  'sitemap / robots.txt': { desc: 'サイト設定ファイルの存在確認', color: '#6b7280' },
+  '404ページ':         { desc: 'カスタム404の有無・ステータスコード', color: '#f59e0b' },
+  'WPセキュリティ':    { desc: 'ユーザー列挙・ログインURL・xmlrpc', color: '#ef4444' },
+};
+
 function renderCheckGroup(check) {
+  const meta = CHECK_META[check.name] || { desc: '', color: 'var(--c-accent)' };
   return `
-    <div class="check-group">
-      <h3 class="check-group-title">${check.name}</h3>
+    <div class="check-group" style="border-left: 3px solid ${meta.color}">
+      <div class="check-group-header">
+        <h3 class="check-group-title">${check.name}</h3>
+        ${meta.desc ? `<span class="check-group-desc">${meta.desc}</span>` : ''}
+      </div>
       <div class="check-items">
         ${check.items.map(item => `
         <div class="check-row ${item.status}">
@@ -335,8 +359,11 @@ function renderDetails(details) {
 function renderScreenshots(screenshots, pageName) {
   if (!screenshots || screenshots.length === 0) return '';
   return `
-    <div class="check-group">
-      <h3 class="check-group-title">レスポンシブスクリーンショット</h3>
+    <div class="check-group" style="border-left: 3px solid #06b6d4">
+      <div class="check-group-header">
+        <h3 class="check-group-title">スクリーンショット</h3>
+        <span class="check-group-desc">10幅のレスポンシブ表示</span>
+      </div>
       <div class="screenshot-grid">
         ${screenshots.map(s => `
         <div class="screenshot-card">
@@ -571,13 +598,28 @@ function getStyles() {
     }
 
     /* Check Groups */
-    .check-group { padding: 0 24px 20px; }
-    .check-group-title {
-      font-size: 0.75em; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.5px; color: var(--c-text-secondary);
+    .check-group {
+      padding: 0 24px 20px;
+      margin: 0 12px;
+      border-left: 3px solid var(--c-accent);
+      padding-left: 20px;
+    }
+    .check-group-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
       padding: 16px 0 10px;
       border-bottom: 1px solid var(--c-border);
       margin-bottom: 4px;
+    }
+    .check-group-title {
+      font-size: 0.85em; font-weight: 700;
+      letter-spacing: 0.3px; color: var(--c-text);
+      margin: 0;
+    }
+    .check-group-desc {
+      font-size: 0.72em; color: var(--c-text-secondary);
+      font-weight: 400;
     }
     .check-row {
       display: grid;
