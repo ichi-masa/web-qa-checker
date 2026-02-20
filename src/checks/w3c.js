@@ -1,6 +1,47 @@
-// W3C HTML/CSS バリデーション + 閉じタグチェック
+// W3C HTML バリデーション + 閉じタグチェック
 // HTML: Nu HTML Checker API (https://validator.w3.org/nu/)
-// CSS: W3C CSS Validator API (https://jigsaw.w3.org/css-validator/)
+// ※ CSSバリデーションはAPI容量制限のため手動チェック項目に移動
+
+const HTML_VALIDATOR_URL = 'https://validator.w3.org/nu/?out=json';
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 3000;
+const PRE_REQUEST_DELAY_MS = 1500;
+
+async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    // リクエスト前に待機（レート制限回避）
+    if (attempt > 1) {
+      const delay = RETRY_DELAY_MS * attempt;
+      console.log(`    W3C API リトライ ${attempt}/${retries}（${delay / 1000}秒待機）...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    const res = await fetch(url, options);
+    const contentType = res.headers.get('content-type') || '';
+
+    // JSONレスポンスが返ってきた場合は成功
+    if (contentType.includes('application/json') || contentType.includes('text/json')) {
+      return await res.json();
+    }
+
+    // HTMLが返ってきた場合（レート制限やエラーページ）
+    if (contentType.includes('text/html')) {
+      if (attempt === retries) {
+        throw new Error(`W3C APIがHTMLを返しました（レート制限の可能性）。${retries}回リトライ後も失敗`);
+      }
+      continue;
+    }
+
+    // その他のContent-Typeの場合もJSONパースを試みる
+    try {
+      return await res.json();
+    } catch {
+      if (attempt === retries) {
+        throw new Error(`W3C APIのレスポンスをパースできませんでした（Content-Type: ${contentType}）`);
+      }
+    }
+  }
+}
 
 export async function checkW3c(page, pageUrl) {
   const results = {
@@ -10,14 +51,16 @@ export async function checkW3c(page, pageUrl) {
 
   const html = await page.content();
 
+  // リクエスト前の待機（レート制限回避）
+  await new Promise(resolve => setTimeout(resolve, PRE_REQUEST_DELAY_MS));
+
   // --- HTML バリデーション ---
   try {
-    const res = await fetch('https://validator.w3.org/nu/?out=json', {
+    const data = await fetchWithRetry(HTML_VALIDATOR_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
       body: html,
     });
-    const data = await res.json();
 
     const errors = data.messages?.filter(m => m.type === 'error') || [];
     const warnings = data.messages?.filter(m => m.type === 'info' && m.subType === 'warning') || [];
@@ -57,77 +100,6 @@ export async function checkW3c(page, pageUrl) {
   } catch (err) {
     results.items.push({
       label: 'HTML バリデーション',
-      status: 'warning',
-      value: `チェック失敗: ${err.message}`,
-    });
-  }
-
-  // APIレート制限のための待機
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // --- CSS バリデーション ---
-  try {
-    // ページコンテキスト内でCSS取得（Basic認証対応）
-    const cssText = await page.evaluate(async () => {
-      const texts = [];
-      // インラインスタイル
-      document.querySelectorAll('style').forEach(el => texts.push(el.textContent));
-      // 同一オリジンのリンクスタイルシート
-      const origin = location.origin;
-      for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
-        try {
-          if (new URL(link.href).origin === origin) {
-            const res = await fetch(link.href);
-            texts.push(await res.text());
-          }
-        } catch {}
-      }
-      return texts.join('\n');
-    });
-
-    const CSS_SIZE_LIMIT = 50000; // 50KB
-
-    if (cssText.trim() && cssText.length < CSS_SIZE_LIMIT) {
-      const params = new URLSearchParams({
-        text: cssText,
-        output: 'json',
-        warning: 'no',
-        profile: 'css3',
-      });
-
-      const res = await fetch('https://jigsaw.w3.org/css-validator/validator', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-      });
-      const data = await res.json();
-
-      const cssErrors = data.cssvalidation?.errors || [];
-      results.items.push({
-        label: 'CSS エラー',
-        status: cssErrors.length === 0 ? 'ok' : 'error',
-        value: cssErrors.length === 0 ? '問題なし' : `${cssErrors.length}件`,
-        details: cssErrors.slice(0, 20).map(e =>
-          `行${e.line || '?'}: ${e.message?.trim()}`
-        ),
-      });
-
-    } else if (cssText.length >= CSS_SIZE_LIMIT) {
-      results.items.push({
-        label: 'CSS バリデーション',
-        status: 'info',
-        value: `CSSが大きすぎるためスキップ（${Math.round(cssText.length / 1024)}KB）`,
-      });
-    } else {
-      results.items.push({
-        label: 'CSS バリデーション',
-        status: 'info',
-        value: '同一オリジンのCSSなし',
-      });
-    }
-  } catch (err) {
-    results.items.push({
-      label: 'CSS バリデーション',
       status: 'warning',
       value: `チェック失敗: ${err.message}`,
     });

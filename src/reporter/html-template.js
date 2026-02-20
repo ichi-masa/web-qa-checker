@@ -85,6 +85,7 @@ export function generateHtml(report) {
 }
 
 const MANUAL_ITEMS = [
+  'CSSバリデーション（W3C）',
   'アニメーションの質',
   'Win Chrome / Edge',
   'iOS Safari (Xcode)',
@@ -235,16 +236,25 @@ function renderPageSection(page, index, useTabs = false) {
 
 function renderLighthouseDiagnostics(check) {
   const d = check.diagnostics;
-  if (!d || (d.metrics.length === 0 && d.opportunities.length === 0 && d.diagnostics.length === 0)) {
+  const hasScores = check.rawScores && Object.keys(check.rawScores).length > 0;
+  const hasDiagnostics = d && (d.metrics.length > 0 || d.opportunities.length > 0 || d.diagnostics.length > 0);
+
+  if (!hasScores && !hasDiagnostics) {
     return '';
   }
 
   const scoreColor = (score) =>
     score >= 0.9 ? 'var(--c-green)' : score >= 0.5 ? 'var(--c-orange)' : 'var(--c-red)';
 
+  // Category scores (Performance, Accessibility, Best Practices, SEO)
+  let scoresHtml = '';
+  if (hasScores) {
+    scoresHtml = renderLighthouseGauges(check.rawScores);
+  }
+
   // Metrics
   let metricsHtml = '';
-  if (d.metrics.length > 0) {
+  if (d && d.metrics.length > 0) {
     metricsHtml = `
       <div class="lh-metrics-grid">
         ${d.metrics.map(m => `
@@ -257,7 +267,7 @@ function renderLighthouseDiagnostics(check) {
 
   // Opportunities
   let oppsHtml = '';
-  if (d.opportunities.length > 0) {
+  if (d && d.opportunities.length > 0) {
     oppsHtml = `
       <div class="lh-subsection">
         <div class="lh-subsection-title">改善できる項目</div>
@@ -278,7 +288,7 @@ function renderLighthouseDiagnostics(check) {
 
   // Diagnostics
   let diagHtml = '';
-  if (d.diagnostics.length > 0) {
+  if (d && d.diagnostics.length > 0) {
     diagHtml = `
       <div class="lh-subsection">
         <div class="lh-subsection-title">診断</div>
@@ -295,8 +305,9 @@ function renderLighthouseDiagnostics(check) {
     <div class="check-group" style="border-left: 3px solid #f97316">
       <div class="check-group-header">
         <h3 class="check-group-title">Lighthouse</h3>
-        <span class="check-group-desc">診断詳細</span>
+        <span class="check-group-desc">スコア・診断詳細</span>
       </div>
+      ${scoresHtml}
       ${metricsHtml}
       ${oppsHtml}
       ${diagHtml}
