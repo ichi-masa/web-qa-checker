@@ -15,18 +15,19 @@ Web制作の納品前品質チェックを自動化するCLIツール。Playwrig
 
 ### 前提条件
 - Node.js 18.0.0以上
+- Google Chrome（Lighthouseが内部で使用します）
 
 ### セットアップ
+
+1. [ZIPをダウンロード](https://github.com/ichi-masa/web-qa-checker/archive/refs/heads/main.zip)して解凍
+2. ターミナルで解凍したフォルダに移動して以下を実行：
 
 ```bash
 # 依存関係をインストール
 npm install
 
-# Playwrightのブラウザをインストール
+# Playwrightのブラウザをインストール（チェック実行に必要）
 npx playwright install chromium
-
-# グローバルコマンドとして登録（オプション）
-npm link   # 「qcheck」コマンドが使えるようになります
 ```
 
 ## 使い方
