@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface } from 'readline/promises';
 import { exec } from 'child_process';
-import { createPage, closeBrowser, setAuth } from './utils/browser.js';
+import { createPage, closeBrowser, setAuth, wpLogin } from './utils/browser.js';
 import { crawlPages } from './crawler.js';
 import { checkSeo } from './checks/seo.js';
 import { checkImages } from './checks/images.js';
@@ -20,6 +20,8 @@ import { checkSsl } from './checks/ssl.js';
 import { checkSiteFiles } from './checks/site-files.js';
 import { checkNotFound } from './checks/not-found.js';
 import { checkWpSecurity } from './checks/wp-security.js';
+import { checkTextOverflow } from './checks/text-overflow.js';
+import { checkRedirects } from './checks/redirects.js';
 import { generateReport } from './reporter/generate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -32,6 +34,7 @@ const flags = {
   output: getFlag(args, '--output') || path.join(__dirname, '..', 'output'),
   name: getFlag(args, '--name'),
   auth: getFlag(args, '--auth'),
+  wpPassword: getFlag(args, '--wp-password'),
   skipLighthouse: args.includes('--skip-lighthouse'),
   skipScreenshots: args.includes('--skip-screenshots'),
 };
@@ -53,6 +56,8 @@ async function interactiveMode() {
 
   const inputAuth = await rl.question('  Basic認証（user:pass 形式、なければ空欄）: ');
 
+  const inputWpPassword = await rl.question('  WPパスワード保護（パスワード、なければ空欄）: ');
+
   const inputLh = await rl.question('  Lighthouseも実行する？ (Y/n): ');
   const skipLh = inputLh.trim().toLowerCase() === 'n';
 
@@ -62,6 +67,7 @@ async function interactiveMode() {
     url: inputUrl.trim(),
     name: inputName.trim() || null,
     auth: inputAuth.trim() || null,
+    wpPassword: inputWpPassword.trim() || null,
     skipLighthouse: skipLh,
   };
 }
@@ -75,6 +81,7 @@ async function main() {
     targetUrl = answers.url;
     if (!flags.name && answers.name) flags.name = answers.name;
     if (!flags.auth && answers.auth) flags.auth = answers.auth;
+    if (!flags.wpPassword && answers.wpPassword) flags.wpPassword = answers.wpPassword;
     if (answers.skipLighthouse) flags.skipLighthouse = true;
   }
 
@@ -100,6 +107,16 @@ async function main() {
   console.log(`  出力: ${outputDir}`);
   console.log('');
 
+  // WPパスワード保護の突破
+  if (flags.wpPassword) {
+    const { page: wpPage, context: wpCtx } = await createPage();
+    await wpLogin(wpPage, baseUrl + '/', flags.wpPassword);
+    // cookieを保存して以降のcontextに引き継ぐ
+    const cookies = await wpCtx.cookies();
+    global.__wpCookies = cookies;
+    await wpCtx.close();
+  }
+
   // ページ一覧を取得
   let pageUrls;
   if (flags.pages) {
@@ -107,6 +124,7 @@ async function main() {
   } else {
     console.log('【1/4】ページ収集中...');
     const { page, context } = await createPage();
+    if (global.__wpCookies) await context.addCookies(global.__wpCookies);
     const crawlResult = await crawlPages(baseUrl + '/', page);
     await context.close();
 
@@ -214,6 +232,7 @@ async function main() {
 
     // console-errors は最初に実行（ページ遷移を伴うため）
     const { page, context } = await createPage();
+    if (global.__wpCookies) await context.addCookies(global.__wpCookies);
     console.log('    - コンソール/ネットワークエラー...');
     const consoleResult = await checkConsoleErrors(page, pageUrl);
     pageResult.checks.push(consoleResult);
@@ -250,6 +269,10 @@ async function main() {
     const paginationResult = await checkPagination(page);
     pageResult.checks.push(paginationResult);
 
+    console.log('    - テキスト見切れ...');
+    const textOverflowResult = await checkTextOverflow(page, pageUrl);
+    pageResult.checks.push(textOverflowResult);
+
     // レスポンシブスクリーンショット
     if (!flags.skipScreenshots) {
       console.log('    - レスポンシブチェック（10幅）...');
@@ -266,6 +289,7 @@ async function main() {
   // サイト全体チェック
   console.log('\n  [サイト全体] セキュリティ・設定チェック...');
   const { page: sitePage, context: siteContext } = await createPage();
+  if (global.__wpCookies) await siteContext.addCookies(global.__wpCookies);
   const siteChecks = [];
 
   console.log('    - SSL/HTTPS...');
@@ -279,6 +303,9 @@ async function main() {
 
   console.log('    - WPセキュリティ...');
   siteChecks.push(await checkWpSecurity(sitePage, baseUrl));
+
+  console.log('    - リダイレクト...');
+  siteChecks.push(await checkRedirects(sitePage, baseUrl));
 
   await siteContext.close();
 

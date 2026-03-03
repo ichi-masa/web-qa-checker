@@ -85,11 +85,31 @@ export async function checkLinks(page, baseUrl) {
     details: brokenLinks.map(l => `${l.statusCode}: ${l.href} ("${l.text}")`),
   });
 
+  // 日本語URL（非ASCII文字）チェック
+  const nonAsciiLinks = internalLinks.filter(l => {
+    try {
+      const pathname = decodeURIComponent(new URL(l.href).pathname);
+      return /[^\x00-\x7F]/.test(pathname);
+    } catch {
+      return false;
+    }
+  });
+
+  results.items.push({
+    label: '日本語URL（非ASCII）',
+    status: nonAsciiLinks.length > 0 ? 'warning' : 'ok',
+    value: nonAsciiLinks.length > 0
+      ? `${nonAsciiLinks.length}件 — パーマリンク設定の確認推奨`
+      : '問題なし',
+    details: nonAsciiLinks.map(l => decodeURIComponent(new URL(l.href).pathname)),
+  });
+
   results.summary = {
     total: links.length,
     dummy: dummyLinks.length,
     broken: brokenLinks.length,
     internal: internalLinks.length,
+    nonAscii: nonAsciiLinks.length,
   };
 
   return results;

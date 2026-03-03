@@ -65,5 +65,29 @@ export async function checkConsoleErrors(page, url) {
     details: networkErrors.map(e => `${e.status}: ${e.url}`),
   });
 
+  // リサイズ時のコンソールエラーチェック
+  const resizeErrors = [];
+  const resizeHandler = msg => {
+    if (msg.type() === 'error') {
+      resizeErrors.push(msg.text());
+    }
+  };
+  page.on('console', resizeHandler);
+
+  const resizeWidths = [375, 768, 1280, 1920];
+  for (const width of resizeWidths) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(500);
+  }
+
+  page.off('console', resizeHandler);
+
+  results.items.push({
+    label: 'リサイズ時エラー',
+    status: resizeErrors.length > 0 ? 'error' : 'ok',
+    value: resizeErrors.length > 0 ? `${resizeErrors.length}件` : '0件',
+    details: [...new Set(resizeErrors)],
+  });
+
   return results;
 }
